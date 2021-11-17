@@ -5,17 +5,11 @@
 Desired new logic:
 
 If never triggered before:
-    If cycle has initial:
-        This step is initial
-    Else:
-        This step is 0
-Else if last triggered >= 0.5s ago:
-    If cycle has initial:
-        This step is initial
-    Else:
-        This step is last step + 1
+    Do step 0
+Else if last triggered >= 0.5s ago and has reset:
+    Do step 0
 Else:
-    This step is last step + 1
+    Do step (last_step + 1) % step_count
 
 """
 
@@ -69,25 +63,26 @@ class Step:
 @dataclass
 class Cycle:
     name: str
-    initial: Optional[Step]
+    reset: bool
     steps: List[Step]
 
     def __len__(self):
-        return len(self.steps) + (1 if self.initial is not None else 0)
+        return len(self.steps)
 
     def dump(self):
-        return {
+        cycle_dict = {
             'name': self.name,
-            'initial': self.initial.dump() if self.initial is not None else None,
             'steps': [step.dump() for step in self.steps],
         }
+        if self.reset:
+            cycle_dict['reset'] = self.reset
+        return cycle_dict
 
     @staticmethod
     def load(cycle_name: str, cycle_body: List):
-        initial = cycle_body.get('initial')
         return Cycle(
             cycle_name,
-            Step.load(initial) if initial is not None else None,
+            cycle_body.get('reset', False),
             [Step.load(step_actions) for step_actions in cycle_body['steps']],
         )
 
