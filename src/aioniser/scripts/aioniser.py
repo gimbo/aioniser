@@ -53,6 +53,9 @@ class Activity:
 class Step:
     step_activities: List[Activity]
 
+    def __getitem__(self, index):
+        return self.step_activities[index]
+
     def __len__(self):
         return len(self.step_activies)
 
@@ -96,14 +99,13 @@ class Cycle:
 
 
 def do_aioniser(config_file_path, step_state_file_path, cycle_name):
-    actions, cycles_old, cycles = read_aioniser_config(config_file_path)
-    cycle_old = cycles_old[cycle_name]
+    actions, cycles = read_aioniser_config(config_file_path)
     cycle = cycles[cycle_name]
     step_no = get_step_no_to_run(step_state_file_path, cycle_name, len(cycle))
-    step = cycle_old['steps'][step_no]
+    step = cycle.steps[step_no]
     for activity in step:
-        action_name = activity['action']
-        kwargs = activity['kwargs']
+        action_name = activity.action
+        kwargs = activity.kwargs
         action = actions[action_name].format(**kwargs)
         print(action)
         os.system(action)
@@ -143,7 +145,7 @@ def read_aioniser_config(config_path):
         cycle_name: Cycle.load(cycle_name, cycle_body)
         for cycle_name, cycle_body in config['cycles'].items()
     }
-    return config['actions'], config['cycles'], cycles
+    return config['actions'], cycles
 
 
 # Step file I/O
