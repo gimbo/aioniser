@@ -28,6 +28,15 @@ DEFAULT_CONFIG_FILE_PATH = Path('~/.config/aioniser.json').expanduser()
 DEFAULT_STEP_STATE_FILE_PATH = Path(gettempdir()) / 'aioniser_steps.json'
 
 
+def main():
+    args = parse_args()
+    do_aioniser(
+        DEFAULT_CONFIG_FILE_PATH,
+        DEFAULT_STEP_STATE_FILE_PATH,
+        args.cycle_name,
+    )
+
+
 @dataclass
 class Activity:
     action: str
@@ -87,11 +96,7 @@ class Cycle:
         )
 
 
-def main():
-    config_file_path = DEFAULT_CONFIG_FILE_PATH
-    step_state_file_path = DEFAULT_STEP_STATE_FILE_PATH
-    args = parse_args()
-    cycle_name = args.cycle_name
+def do_aioniser(config_file_path, step_state_file_path, cycle_name):
     actions, cycles_old, cycles = read_aioniser_config(config_file_path)
     cycle_old = cycles_old[cycle_name]
     cycle = cycles[cycle_name]
@@ -131,9 +136,19 @@ def get_step_no_to_run(
     return current_step_for_cycle
 
 
-def now():
-    return datetime.now(tz=timezone.utc).isoformat(timespec='milliseconds')
+# Config file I/O
 
+def read_aioniser_config(config_path):
+    with open(config_path) as config_input:
+        config = json.load(config_input)
+    cycles = {
+        cycle_name: Cycle.load(cycle_name, cycle_body)
+        for cycle_name, cycle_body in config['cycles'].items()
+    }
+    return config['actions'], config['cycles'], cycles
+
+
+# Step file I/O
 
 def read_step_state_file(step_state_file_path):
     try:
@@ -151,6 +166,15 @@ def write_step_state_file(step_state_file_path, step_states):
         )
 
 
+# Timestamp I/O
+
+
+def now():
+    return datetime.now(tz=timezone.utc).isoformat(timespec='milliseconds')
+
+
+# Argument parsing and housekeeping
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -159,16 +183,6 @@ def parse_args():
         help='Name of cycle in which to trigger a step'
     )
     return parser.parse_args()
-
-
-def read_aioniser_config(config_path):
-    with open(config_path) as config_input:
-        config = json.load(config_input)
-    cycles = {
-        cycle_name: Cycle.load(cycle_name, cycle_body)
-        for cycle_name, cycle_body in config['cycles'].items()
-    }
-    return config['actions'], config['cycles'], cycles
 
 
 if __name__ == '__main__':
