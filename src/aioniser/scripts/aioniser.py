@@ -19,9 +19,8 @@ import os
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from pprint import pformat
 from tempfile import gettempdir
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 DEFAULT_CONFIG_FILE_PATH = Path('~/.config/aioniser.json').expanduser()
@@ -88,7 +87,7 @@ class Cycle:
         return cycle_dict
 
     @staticmethod
-    def load(cycle_name: str, cycle_body: List):
+    def load(cycle_name: str, cycle_body: Dict):
         return Cycle(
             cycle_name,
             cycle_body.get('reset', False),
@@ -100,9 +99,7 @@ def do_aioniser(config_file_path, step_state_file_path, cycle_name):
     actions, cycles_old, cycles = read_aioniser_config(config_file_path)
     cycle_old = cycles_old[cycle_name]
     cycle = cycles[cycle_name]
-    step_no = get_step_no_to_run(
-        step_state_file_path, cycle_name, len(cycle)
-    )
+    step_no = get_step_no_to_run(step_state_file_path, cycle_name, len(cycle))
     step = cycle_old['steps'][step_no]
     for activity in step:
         action_name = activity['action']
@@ -122,7 +119,7 @@ def get_step_no_to_run(
         'last_step': None,
         'last_stepped': None,
     }
-    entry_for_cycle = step_states.get(cycle_name,default_step_info)
+    entry_for_cycle = step_states.get(cycle_name, default_step_info)
     last_step_for_cycle = entry_for_cycle['last_step']
     if last_step_for_cycle is None:
         current_step_for_cycle = 0
@@ -138,6 +135,7 @@ def get_step_no_to_run(
 
 # Config file I/O
 
+
 def read_aioniser_config(config_path):
     with open(config_path) as config_input:
         config = json.load(config_input)
@@ -150,6 +148,7 @@ def read_aioniser_config(config_path):
 
 # Step file I/O
 
+
 def read_step_state_file(step_state_file_path):
     try:
         with open(step_state_file_path) as step_state_input:
@@ -161,9 +160,7 @@ def read_step_state_file(step_state_file_path):
 
 def write_step_state_file(step_state_file_path, step_states):
     with open(step_state_file_path, 'w') as step_state_input:
-        json.dump(
-            dict(sorted(step_states.items())), step_state_input, indent=4
-        )
+        json.dump(dict(sorted(step_states.items())), step_state_input, indent=4)
 
 
 # Timestamp I/O
@@ -175,12 +172,11 @@ def now():
 
 # Argument parsing and housekeeping
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'cycle_name',
-        metavar='CYCLE',
-        help='Name of cycle in which to trigger a step'
+        'cycle_name', metavar='CYCLE', help='Name of cycle in which to trigger a step'
     )
     return parser.parse_args()
 
