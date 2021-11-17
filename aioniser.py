@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import gettempdir
 
@@ -17,9 +18,10 @@ def main():
     args = parse_args()
     actions, cycles = read_aioniser_config(config_file_path)
     cycle = cycles[args.cycle_name]
-    step = cycle['steps'][get_next_step_no(
+    step_no = get_step_no_to_run(
         step_state_file_path, args.cycle_name, len(cycle['steps'])
-    )]
+    )
+    step = cycle['steps'][step_no]
     for activity in step:
         action_name = activity['action']
         kwargs = activity['kwargs']
@@ -28,13 +30,32 @@ def main():
         os.system(action)
 
 
-def get_next_step_no(step_state_file_path, cycle_name, cycle_length):
+def get_step_no_to_run(
+    step_state_file_path: Path,
+    cycle_name: str,
+    cycle_length: int,
+) -> int:
     step_states = read_step_state_file(step_state_file_path)
-    current_step_for_cycle = step_states.get(cycle_name, 0)
-    next_step_for_cycle = (current_step_for_cycle + 1) % cycle_length
-    step_states[cycle_name] = next_step_for_cycle
+    default_step_info = {
+        'last_step': None,
+        'last_stepped': None,
+    }
+    entry_for_cycle = step_states.get(cycle_name,default_step_info)
+    last_step_for_cycle = entry_for_cycle['last_step']
+    if last_step_for_cycle is None:
+        current_step_for_cycle = 0
+    else:
+        current_step_for_cycle = (last_step_for_cycle + 1) % cycle_length
+    step_states[cycle_name] = {
+        'last_step': current_step_for_cycle,
+        'last_stepped': now(),
+    }
     write_step_state_file(step_state_file_path, step_states)
     return current_step_for_cycle
+
+
+def now():
+    return datetime.now(tz=timezone.utc).isoformat(timespec='milliseconds')
 
 
 def read_step_state_file(step_state_file_path):
