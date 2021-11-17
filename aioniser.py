@@ -51,6 +51,9 @@ class Activity:
 class Step:
     step_activities: List[Activity]
 
+    def __len__(self):
+        return len(self.step_activies)
+
     def dump(self):
         return [activity.dump() for activity in self.step_activities]
 
@@ -68,6 +71,9 @@ class Cycle:
     name: str
     initial: Optional[Step]
     steps: List[Step]
+
+    def __len__(self):
+        return len(self.steps) + (1 if self.initial is not None else 0)
 
     def dump(self):
         return {
@@ -91,12 +97,13 @@ def main():
     step_state_file_path = DEFAULT_STEP_STATE_FILE_PATH
     args = parse_args()
     cycle_name = args.cycle_name
-    actions, cycles, cycles_new = read_aioniser_config(config_file_path)
+    actions, cycles_old, cycles = read_aioniser_config(config_file_path)
+    cycle_old = cycles_old[cycle_name]
     cycle = cycles[cycle_name]
     step_no = get_step_no_to_run(
-        step_state_file_path, cycle_name, len(cycle['steps'])
+        step_state_file_path, cycle_name, len(cycle)
     )
-    step = cycle['steps'][step_no]
+    step = cycle_old['steps'][step_no]
     for activity in step:
         action_name = activity['action']
         kwargs = activity['kwargs']
