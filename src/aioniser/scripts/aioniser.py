@@ -1,23 +1,12 @@
 #!/usr/bin/env python
 
-"""aioniser.py
-
-Desired new logic:
-
-If never triggered before:
-    Do step 0
-Else if last triggered >= 0.5s ago and has reset:
-    Do step 0
-Else:
-    Do step (last_step + 1) % step_count
-
-"""
+"""aioniser.py"""
 
 import argparse
 import json
 import os
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import gettempdir
 from typing import Dict, List
@@ -25,6 +14,8 @@ from typing import Dict, List
 
 DEFAULT_CONFIG_FILE_PATH = Path('~/.config/aioniser.json').expanduser()
 DEFAULT_STEP_STATE_FILE_PATH = Path(gettempdir()) / 'aioniser_steps.json'
+
+DEFAULT_RESET_TIMEOUT_MS = 1000
 
 
 def main():
@@ -101,7 +92,7 @@ class Cycle:
 def do_aioniser(config_file_path, step_state_file_path, cycle_name):
     actions, cycles = read_aioniser_config(config_file_path)
     cycle = cycles[cycle_name]
-    step_no = get_step_no_to_run(step_state_file_path, cycle_name, len(cycle))
+    step_no = get_step_no_to_run(step_state_file_path, cycle)
     step = cycle.steps[step_no]
     for activity in step:
         action_name = activity.action
@@ -111,28 +102,41 @@ def do_aioniser(config_file_path, step_state_file_path, cycle_name):
         os.system(action)
 
 
-def get_step_no_to_run(
-    step_state_file_path: Path,
-    cycle_name: str,
-    cycle_length: int,
-) -> int:
+def get_step_no_to_run(step_state_file_path: Path, cycle: Cycle) -> int:
+    """
+    Inspect the step state file; compute next step; update state file.
+
+    Logic for computing step to perform:
+
+        If never triggered before:
+            Do step 0
+        Else if has reset flag and last triggered >= 0.5s ago
+            Do step 0
+        Else:
+            Do step (last_step + 1) % step_count
+
+    """
     step_states = read_step_state_file(step_state_file_path)
-    default_step_info = {
-        'last_step': None,
-        'last_stepped': None,
-    }
-    entry_for_cycle = step_states.get(cycle_name, default_step_info)
-    last_step_for_cycle = entry_for_cycle['last_step']
-    if last_step_for_cycle is None:
-        current_step_for_cycle = 0
+    cycle_state = step_states.get(cycle.name)
+    if not cycle_state:
+        # Never run before
+        step_to_perform = 0
+    elif cycle.reset and check_timeout(cycle_state['last_stepped']):
+        step_to_perform = 0
     else:
-        current_step_for_cycle = (last_step_for_cycle + 1) % cycle_length
-    step_states[cycle_name] = {
-        'last_step': current_step_for_cycle,
-        'last_stepped': now(),
+        step_to_perform = (cycle_state['last_step'] + 1) % len(cycle)
+    step_states[cycle.name] = {
+        'last_step': step_to_perform,
+        'last_stepped': dump_timestamp(now()),
     }
     write_step_state_file(step_state_file_path, step_states)
-    return current_step_for_cycle
+    return step_to_perform
+
+
+def check_timeout(timestamp_str: str) -> bool:
+    timestamp = load_timestamp(timestamp_str)
+    elapsed = now() - timestamp
+    return elapsed > timedelta(milliseconds=DEFAULT_RESET_TIMEOUT_MS)
 
 
 # Config file I/O
@@ -168,8 +172,16 @@ def write_step_state_file(step_state_file_path, step_states):
 # Timestamp I/O
 
 
-def now():
-    return datetime.now(tz=timezone.utc).isoformat(timespec='milliseconds')
+def now() -> datetime:
+    return datetime.now(tz=timezone.utc)
+
+
+def dump_timestamp(timestamp: datetime) -> str:
+    return timestamp.isoformat(timespec='milliseconds')
+
+
+def load_timestamp(timestamp_str: str) -> datetime:
+    return datetime.fromisoformat(timestamp_str)
 
 
 # Argument parsing and housekeeping
