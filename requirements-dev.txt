@@ -4,11 +4,9 @@
 #
 #    pip-compile requirements-dev.in
 #
-appdirs==1.4.4
-    # via black
-backports.entry-points-selectable==1.1.1
+backports-entry-points-selectable==1.1.1
     # via virtualenv
-black==21.4b2
+black==24.3.0
     # via -r requirements-dev.in
 cfgv==3.3.1
     # via pre-commit
@@ -32,10 +30,14 @@ mypy-extensions==0.4.3
     #   mypy
 nodeenv==1.6.0
     # via pre-commit
+packaging==24.0
+    # via black
 pathspec==0.9.0
     # via black
 platformdirs==2.4.0
-    # via virtualenv
+    # via
+    #   black
+    #   virtualenv
 pre-commit==2.12.1
     # via -r requirements-dev.in
 pycodestyle==2.7.0
@@ -44,17 +46,17 @@ pyflakes==2.3.1
     # via flake8
 pyyaml==6.0
     # via pre-commit
-regex==2021.11.10
-    # via black
 six==1.16.0
     # via virtualenv
 toml==0.10.2
-    # via
-    #   black
-    #   pre-commit
+    # via pre-commit
+tomli==2.0.1
+    # via black
 typed-ast==1.4.3
     # via mypy
-typing-extensions==4.0.0
-    # via mypy
+typing-extensions==4.10.0
+    # via
+    #   black
+    #   mypy
 virtualenv==20.10.0
     # via pre-commit
